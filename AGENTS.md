@@ -1,6 +1,6 @@
-# [project-name] Workspace — Agent Instructions
+# iberdrola-happy-time-workspace Workspace — Agent Instructions
 
-`dev/[project-name]/` stores agent context/tasks/docs. Code repos `app/`, `landing/`, and `nginx/` are gitignored; search explicit repo paths and use task paths like `app/src/...`.
+`dev/iberdrola-happy-time-workspace/` stores agent context/tasks/docs. Code repos `app/`, `landing/`, and `nginx/` are gitignored; search explicit repo paths and use task paths like `app/src/...`.
 
 ## Local Permissions
 
@@ -57,4 +57,4 @@ Read `PROJECT_MAP.md` before scanning. Code runtime, dependency work, and repo g
 
 ## LLM Memory
 
-Auto-memory is keyed to `dev/[project-name]/`. Tag new facts with `app`, `landing`, `nginx`, or `workspace` unless workspace-wide.
+Auto-memory is keyed to `dev/iberdrola-happy-time-workspace/`. Tag new facts with `app`, `landing`, `nginx`, or `workspace` unless workspace-wide.

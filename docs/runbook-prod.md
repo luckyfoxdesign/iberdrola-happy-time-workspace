@@ -1,132 +1,135 @@
-# Production Runbook
+---
+type: architecture
+status: draft
+project: landing
+created: 2026-10-09
+---
 
-<!-- TEMPLATE: fill placeholders for your project and delete this comment.
-     This is an operational deploy/incident reference. Commands should be copy-pasteable. -->
+# Production Runbook — Iberdrola Happy Time
 
-Operational reference for deploying `[project-name]`.
+Лендинг разворачивается отдельным Compose-проектом на сервере центрального
+Traefik. Репозиторий: https://github.com/luckyfoxdesign/iberdrola-happy-time.
+Edge-прокси: `dev/traefik-apps`, серверный каталог `~/traefik-apps`.
+Лендинг: `~/iberdrola-happy-time`. Воркспейс на сервер не переносится.
 
-All commands run on `[your-server-alias]` as `[user]`. VPS project path: `[~/project-path]`.
+Выбран домен **`iberdrola.luckyfox.design`**. Он задан по умолчанию в
+production Compose и как `site` в Astro.
 
-## Environment
+Первое развёртывание выполнено 2026-10-09 из коммита `2b320da`.
+Проверки: [production deployment](product/architecture/production-deployment.md).
 
-`.env` lives on the server at `[~/project-path]/.env` and is not committed. Minimum required variables:
+## Предварительные условия
 
-```text
-# Group by service: database, external APIs, app secrets.
-DATABASE_URL=
-# SECRET_KEY=<strong-random>
-# THIRD_PARTY_API_KEY=
-LOG_LEVEL=info
-```
+- Выбран реальный домен; A/AAAA указывают на сервер и соответствуют его сети.
+- Центральный Traefik работает; external-сеть `traefik-public` существует.
+- Edge использует `websecure`, resolver `le`, TLS options `default` и
+  middleware `default-chain@file`; HTTP перенаправляется на HTTPS.
+- Порты 80/443 уже обслуживает Traefik. Лендинг не публикует host ports.
+- Проверенный код отправлен обычным push в GitHub. Не редактировать tracked
+  файлы непосредственно на production.
 
-<!-- Mark variables required by compose.prod.yml, especially those using `:?`. -->
+Сервер из edge runbook: `all-apps-ubuntu-4gb-nbg1-2-sudouser`, пользователь
+`sudouser`. Его доступность и DNS нужно проверить перед live-деплоем.
+Не менять apex `luckyfox.design`, firewall, SSH или конфигурацию edge TLS.
+Секреты лендингу не нужны; `LANDING_DOMAIN` — необязательный override Host.
+В примерах он передаётся через shell для HTTP-проверок.
 
-## SSH
-
-```bash
-ssh [your-server-alias]
-```
-
-Agent rules on the server: start read-only (`ps`, `logs`, `git log`); do not change firewall, `sshd_config`, TLS certs, user accounts, or `.env` unless the task explicitly asks.
-
-## Server Security Baseline
-
-<!-- Fill in what is actually configured on the VPS so agents and humans can verify it, e.g.:
-     - firewall: ufw, only 22/80/443 open
-     - ssh: key-only auth, root login disabled
-     - fail2ban on sshd
-     - TLS: certbot auto-renew (systemd timer)
-     - docker: no containers with published ports besides nginx -->
-
-| Control | Status / How to verify |
-|---|---|
-| Firewall | <!-- `sudo ufw status` --> |
-| SSH hardening | <!-- key-only, no root login --> |
-| TLS renewal | <!-- `systemctl list-timers | grep certbot` --> |
-| Exposed ports | <!-- `docker ps --format '{{.Names}}\t{{.Ports}}'` --> |
-
-## Pre-Deploy Checks
-
-Run locally before every deploy:
+## Pre-deploy — локально
 
 ```bash
-cd app
-docker compose run --rm test
-docker compose run --rm lint
-docker compose -f compose.prod.yml build
-docker compose -f compose.prod.yml config --quiet  # validates compose + env interpolation without printing secrets
+bash scripts/verify.sh
+cd landing
+bash scripts/verify.sh
+docker compose --env-file /dev/null -f compose.prod.yml config --quiet
+docker compose --env-file /dev/null -f compose.prod.yml build
 ```
 
-<!-- If the prod stack can run locally, add the commands to start it against a local .env
-     and hit the healthcheck before deploying. -->
+Проверить конкретный исходящий diff на секреты и debug-остатки. В новом
+репозитории просмотреть только публичные файлы; не делать массовый add
+непроверенных путей. После первого коммита: `git diff --check` и
+`git diff origin/main -- src docker-files compose.yml compose.prod.yml package.json`.
 
-Then:
-
-- Review the outgoing diff for hardcoded secrets, debug leftovers, and weakened security config: `git log -p origin/main..HEAD` or a security review of the branch.
-- If the change adds env variables: document them in `.env.example` and add real values to the server `.env` before deploying code that requires them.
-- If the change includes migrations: confirm a fresh backup exists (see Backup / Restore).
-
-## Deploy
+Production smoke-check без подключения к edge:
 
 ```bash
-ssh [your-server-alias] "cd [~/project-path] && bash scripts/deploy.sh"
+docker run -d --name iberdrola-happy-time-smoke --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m,uid=101,gid=101 \
+  --cap-drop ALL --security-opt no-new-privileges:true \
+  -p 127.0.0.1:18080:8080 iberdrola-happy-time:local
+curl -fsS http://127.0.0.1:18080/healthz
+curl -fsS http://127.0.0.1:18080/ > /tmp/iberdrola-happy-time-smoke.html
+docker stop iberdrola-happy-time-smoke
+docker rm iberdrola-happy-time-smoke
 ```
 
-After deploy, verify:
+Ожидается `ok`, HTML с заголовком, 7 строками и 168 часовыми ячейками.
+CSS должен загружаться из `/_astro/`. Неизвестный URL должен отдавать 404.
+
+## Deploy — сервер
+
+Начать с read-only проверки: история приложения, список контейнеров и наличие
+сети. Не читать `.env`, сертификаты или credentials.
 
 ```bash
-ssh [your-server-alias] "cd [~/project-path] && docker compose -f compose.prod.yml ps"
-curl -fsS https://[domain]/[healthcheck-path]
+ssh all-apps-ubuntu-4gb-nbg1-2-sudouser
 ```
 
-`scripts/deploy.sh` should run: `git pull`, `docker compose -f compose.prod.yml build`, migrations if needed, then `docker compose -f compose.prod.yml up -d`.
+Первое развёртывание после обычного push:
 
-<!-- Describe ordering: whether migrations run before new containers, whether downtime is expected, etc. -->
+```bash
+git clone https://github.com/luckyfoxdesign/iberdrola-happy-time.git ~/iberdrola-happy-time
+cd ~/iberdrola-happy-time
+export LANDING_DOMAIN=iberdrola.luckyfox.design
+docker network inspect traefik-public --format '{{.Name}}'
+docker compose --env-file /dev/null -f compose.prod.yml config --quiet
+docker compose --env-file /dev/null -f compose.prod.yml up -d --build --wait
+```
+
+Повторное развёртывание:
+
+```bash
+cd ~/iberdrola-happy-time
+export LANDING_DOMAIN=iberdrola.luckyfox.design
+git status --short
+git log -1 --oneline
+git pull --ff-only
+docker compose --env-file /dev/null -f compose.prod.yml config --quiet
+docker compose --env-file /dev/null -f compose.prod.yml up -d --build --wait
+```
+
+`--env-file /dev/null` предотвращает загрузку серверных `.env`. Без override
+Compose использует `iberdrola.luckyfox.design`; переменная в командах выше
+также задаёт адрес для `curl`.
+В `traefik-apps/compose.yml` добавлять сервис не нужно: Docker provider
+обнаруживает labels контейнера лендинга в общей сети.
+
+## После публикации
+
+```bash
+docker compose --env-file /dev/null -f compose.prod.yml ps
+curl -fsS "https://${LANDING_DOMAIN}/healthz"
+curl -fsS "https://${LANDING_DOMAIN}/" > /tmp/iberdrola-happy-time-published.html
+curl -sSI "http://${LANDING_DOMAIN}/"
+curl -sSI "https://${LANDING_DOMAIN}/"
+```
+
+Проверить health status `healthy`, страницу и CSS, валидный HTTPS-сертификат,
+HTTP → HTTPS, отсутствие опубликованных host ports, заголовки
+`Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`,
+`Referrer-Policy`, `Permissions-Policy`. Smoke-check сам по себе не доказывает
+DNS, сертификаты или работу центрального edge.
 
 ## Rollback
 
-1. Find a previous version: `git log --oneline -n 5`.
-2. On the VPS:
-
 ```bash
-ssh [your-server-alias]
-cd [~/project-path]
-git checkout <prev-sha>
-docker compose -f compose.prod.yml build
-docker compose -f compose.prod.yml up -d
+cd ~/iberdrola-happy-time
+export LANDING_DOMAIN=iberdrola.luckyfox.design
+git log -5 --oneline
+git switch --detach <previous-good-sha>
+docker compose --env-file /dev/null -f compose.prod.yml config --quiet
+docker compose --env-file /dev/null -f compose.prod.yml up -d --build --wait
 ```
 
-3. If database migrations exist, document how to downgrade or restore before switching code.
-
-After rollback, return HEAD to main: `git checkout main && bash scripts/deploy.sh`.
-
-## Backup / Restore
-
-<!-- If a database exists, document backup and restore commands. Example for Postgres:
-
-ssh [your-server-alias]
-cd [~/project-path]
-set -a; . ./.env; set +a
-docker compose -f compose.prod.yml exec -T postgres \
-  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner \
-  > "backups/[project]-$(date -u +%Y%m%dT%H%M%SZ).dump"
-
-Restore:
-docker compose -f compose.prod.yml exec -T postgres \
-  pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner \
-  < backups/[project]-<timestamp>.dump
-
-Move backups off the VPS with scp/rsync or offsite storage. -->
-
-## Health And Observability
-
-| Service | Strategy |
-|---|---|
-| `[service]` | <!-- Docker healthcheck / restart policy / Sentry / logs --> |
-
-## Useful Commands
-
-```bash
-docker compose -f compose.prod.yml ps
-docker compose -f compose.prod.yml logs --tail 200 [service]
-```
+Повторить HTTPS/health проверки. Вернуться на рабочую ветку перед следующим
+обновлением: `git switch main`, затем `git pull --ff-only` и rebuild.
+Данных и именованных volumes у лендинга нет; восстановление БД не требуется.

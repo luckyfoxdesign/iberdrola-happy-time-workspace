@@ -1,0 +1,359 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iberdrola — расписание тарифов</title>
+  <style>
+    :root {
+      --cheap: #298766;
+      --mid: #deb65c;
+      --high: #ce7167;
+      --bg: #f6f5f2;
+      --card: #ffffff;
+      --text: #242622;
+      --muted: #777a75;
+      --border: #e6e6e2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 8px 0 24px;
+      font-size: clamp(24px, 4vw, 34px);
+      letter-spacing: -.04em;
+    }
+
+    .prices {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .price-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .price-card small {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .price {
+      font-size: clamp(16px, 3vw, 24px);
+      font-weight: 700;
+      letter-spacing: -.04em;
+    }
+
+    .unit {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .stripe {
+      height: 5px;
+      border-radius: 10px;
+      margin-top: 14px;
+    }
+
+    .cheap { background: var(--cheap); }
+    .mid   { background: var(--mid); }
+    .high  { background: var(--high); }
+
+    .schedule {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: 42px repeat(24, minmax(0, 1fr));
+      gap: 2px;
+    }
+
+    .axis {
+      margin-bottom: 10px;
+    }
+
+    .axis span {
+      font-size: 10px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .day-row {
+      margin-bottom: 7px;
+    }
+
+    .day {
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+    .hour {
+      height: 34px;
+      min-width: 0;
+      cursor: help;
+    }
+
+    .hour.first {
+      border-radius: 5px 0 0 5px;
+    }
+
+    .hour.last {
+      border-radius: 0 5px 5px 0;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+    }
+
+    .recommendation {
+      background: #e8f1eb;
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+
+    .recommendation strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .recommendation p {
+      margin: 0;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .note {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--muted);
+      margin-top: 16px;
+    }
+
+    @media (max-width: 480px) {
+      .schedule { padding: 12px; }
+      .timeline {
+        grid-template-columns: 30px repeat(24, minmax(0, 1fr));
+        gap: 1px;
+      }
+      .hour { height: 30px; }
+      .price-card { padding: 10px; }
+      .day { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Valencia · Iberdrola · 2.0TD</div>
+  <h1>Когда выгоднее стирать</h1>
+
+  <section class="prices">
+    <div class="price-card">
+      <small>Valle · P3</small>
+      <div class="price">0,131 €</div>
+      <div class="unit">за кВт·ч</div>
+      <div class="stripe cheap"></div>
+    </div>
+
+    <div class="price-card">
+      <small>Llano · P2</small>
+      <div class="price">0,163 €</div>
+      <div class="unit">за кВт·ч</div>
+      <div class="stripe mid"></div>
+    </div>
+
+    <div class="price-card">
+      <small>Punta · P1</small>
+      <div class="price">0,205 €</div>
+      <div class="unit">за кВт·ч</div>
+      <div class="stripe high"></div>
+    </div>
+  </section>
+
+  <section class="schedule">
+    <div class="timeline axis" id="axis"></div>
+    <div id="rows"></div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="dot cheap"></span> Дёшево
+      </div>
+      <div class="legend-item">
+        <span class="dot mid"></span> Средне
+      </div>
+      <div class="legend-item">
+        <span class="dot high"></span> Дорого
+      </div>
+    </div>
+  </section>
+
+  <div class="recommendation">
+    <strong>Лучшее время для стирки</strong>
+    <p>
+      Будни: 00:00–08:00.<br>
+      Суббота и воскресенье: весь день.
+    </p>
+  </div>
+
+  <p class="note">
+    Стоимость энергии в период Valle примерно на 36%
+    ниже, чем в Punta. Цены взяты из счёта Iberdrola
+    за сентябрь 2026 года, без налогов.
+    Действуют условия договора; цены могут
+    пересматриваться. Некоторые государственные
+    праздники также тарифицируются как Valle.
+  </p>
+</main>
+
+<script>
+  const days = [
+    "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"
+  ];
+
+  const tariffs = {
+    cheap: {
+      name: "Valle",
+      price: "0,131008"
+    },
+    mid: {
+      name: "Llano",
+      price: "0,162680"
+    },
+    high: {
+      name: "Punta",
+      price: "0,205141"
+    }
+  };
+
+  function getPeriod(day, hour) {
+    // Суббота и воскресенье
+    if (day >= 5) return "cheap";
+
+    // Будни: Valle
+    if (hour < 8) return "cheap";
+
+    // Будни: Punta
+    if (
+      (hour >= 10 && hour < 14) ||
+      (hour >= 18 && hour < 22)
+    ) {
+      return "high";
+    }
+
+    // Будни: Llano
+    return "mid";
+  }
+
+  const axis = document.querySelector("#axis");
+  const rows = document.querySelector("#rows");
+
+  axis.append(document.createElement("div"));
+
+  for (let hour = 0; hour < 24; hour++) {
+    const label = document.createElement("span");
+
+    if (hour % 4 === 0) {
+      label.textContent =
+        String(hour).padStart(2, "0");
+    }
+
+    axis.append(label);
+  }
+
+  days.forEach((dayName, dayIndex) => {
+    const row = document.createElement("div");
+    row.className = "timeline day-row";
+
+    const dayLabel = document.createElement("div");
+    dayLabel.className = "day";
+    dayLabel.textContent = dayName;
+    row.append(dayLabel);
+
+    for (let hour = 0; hour < 24; hour++) {
+      const period = getPeriod(dayIndex, hour);
+      const previous = hour > 0
+        ? getPeriod(dayIndex, hour - 1)
+        : null;
+      const next = hour < 23
+        ? getPeriod(dayIndex, hour + 1)
+        : null;
+
+      const cell = document.createElement("div");
+      cell.className = `hour ${period}`;
+
+      if (previous !== period) {
+        cell.classList.add("first");
+      }
+
+      if (next !== period) {
+        cell.classList.add("last");
+      }
+
+      const tariff = tariffs[period];
+
+      cell.title =
+        `${dayName} ${String(hour).padStart(2, "0")}:00` +
+        `–${String(hour + 1).padStart(2, "0")}:00` +
+        ` | ${tariff.name}` +
+        ` | ${tariff.price} €/кВт·ч`;
+
+      row.append(cell);
+    }
+
+    rows.append(row);
+  });
+</script>
+</body>
+</html>

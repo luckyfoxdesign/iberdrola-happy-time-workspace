@@ -2,7 +2,7 @@
 <!-- Aggregates repo maps. Repo internals live in <repo>/PROJECT_MAP.md. -->
 <!-- Read this before scanning the workspace. -->
 
-Top-level map for the `[project-name]` workspace.
+Top-level map for the `iberdrola-happy-time-workspace` workspace.
 
 ## Map Contract
 
@@ -17,7 +17,7 @@ Top-level map for the `[project-name]` workspace.
 ## Workspace Layout
 
 ```text
-dev/[project-name]/
+dev/iberdrola-happy-time-workspace/
 ├── AGENTS.md, CLAUDE.md, PROJECT_MAP.md
 ├── docs/                     # product docs and workflows; docs/wip is gitignored
 ├── scripts/                  # lifecycle, gates, regression tests, skill linking
@@ -26,9 +26,9 @@ dev/[project-name]/
 ├── .claude/commands/         # Claude command adapters
 ├── _templates/landing/       # static landing template
 ├── _templates/sub-repo/      # template for new code repos
-├── app/PROJECT_MAP.md        # app repo, has its own update-project-map.sh
+├── app/                      # reserved; not initialized
 ├── landing/PROJECT_MAP.md    # landing repo, has its own update-project-map.sh
-└── nginx/PROJECT_MAP.md      # nginx repo, has its own update-project-map.sh
+└── nginx/                    # reserved; central edge lives in ../traefik-apps
 ```
 
 ## Adding A Code Repo
@@ -39,40 +39,36 @@ After `git init <repo-name>`, copy the template:
 cp -r _templates/sub-repo/. <repo-name>/
 ```
 
-Run `bash scripts/link-workspace-skills.sh <repo-name>` to expose shared skills inside the independent Git repo. Then replace `[project-name]` and `[repo-name]`, fill `CLAUDE.md`, `AGENTS.md`, `PROJECT_MAP.md`, and implement or stub `<repo>/scripts/update-project-map.sh`.
+Run `bash scripts/link-workspace-skills.sh <repo-name>` to expose shared skills inside the independent Git repo. Then replace the template project/repo placeholders, fill `CLAUDE.md`, `AGENTS.md`, `PROJECT_MAP.md`, and implement or stub `<repo>/scripts/update-project-map.sh`.
 
 ## Repos
 
 | Repo | Map | Status |
 |---|---|---|
-| app | `app/PROJECT_MAP.md` | — |
-| landing | `landing/PROJECT_MAP.md` | — |
-| nginx | `nginx/PROJECT_MAP.md` | — |
-
-## app
-
-See `app/PROJECT_MAP.md`.
-
-```bash
-cd app
-docker compose up
-docker compose run --rm test
-docker compose run --rm lint
-```
+| app | — | Not initialized |
+| landing | `landing/PROJECT_MAP.md` | Astro static landing; independent Git repo |
+| nginx | — | Not needed: central Traefik in `../traefik-apps` |
 
 ## landing
 
-See `landing/PROJECT_MAP.md`.
+Repo: https://github.com/luckyfoxdesign/iberdrola-happy-time.
+Read `landing/PROJECT_MAP.md` for internals and verification commands.
+Prototype: `docs/backlog/todo/start.html`.
+Production domain: `iberdrola.luckyfox.design` (published; see `docs/product/architecture/production-deployment.md`).
 
 ```bash
 cd landing
-docker compose up
-docker compose run --rm build
+docker compose --env-file /dev/null up --build astro-dev
+bash scripts/verify.sh
 ```
 
-## nginx
+Production integration: `docs/runbook-prod.md` and central edge repo
+`../traefik-apps/PROJECT_MAP.md`. The workspace itself is not deployed.
 
-See `nginx/PROJECT_MAP.md`.
+## app / nginx
+
+Not initialized. The landing is self-contained; TLS and routing are provided
+by the existing central Traefik, so a separate nginx repo is unnecessary.
 
 ## Active Tasks
 

@@ -1,6 +1,6 @@
-# [project-name] Workspace
+# iberdrola-happy-time-workspace Workspace
 
-This repo stores shared LLM context, task docs, and product docs for `[project-name]`.
+This repo stores shared LLM context, task docs, and product docs for `iberdrola-happy-time-workspace`.
 
 Code repos (`app/`, `landing/`, `nginx/`) are separate git repos and are ignored by the workspace repo. This workspace is local-only and is not deployed.
 
@@ -14,9 +14,9 @@ Code repos (`app/`, `landing/`, `nginx/`) are separate git repos and are ignored
 | `/create-task`, `/start-task`, `/review-task`, `/complete-task` flow | `docs/workflows/task-lifecycle.md` |
 | Production deploy / rollback | `docs/runbook-prod.md` |
 | Local development | `docs/runbook-local.md` |
-| App context | `app/CLAUDE.md`, `app/AGENTS.md` |
+| App context | Not initialized |
 | Landing context | `landing/CLAUDE.md`, `landing/AGENTS.md` |
-| Nginx context | `nginx/CLAUDE.md`, `nginx/AGENTS.md` |
+| Central edge context | `../traefik-apps/PROJECT_MAP.md` |
 | Completed tasks | `docs/done/short/` |
 
 ## Rules
@@ -54,4 +54,4 @@ Grep("pattern", path: "nginx")
 
 ## SSH
 
-`ssh [your-server-alias]`. Deploy and rollback: `docs/runbook-prod.md`. Local setup: `docs/runbook-local.md`.
+Deploy and rollback: `docs/runbook-prod.md`. Local setup: `docs/runbook-local.md`.

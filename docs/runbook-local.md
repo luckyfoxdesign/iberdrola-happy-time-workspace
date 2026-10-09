@@ -1,25 +1,47 @@
+---
+type: architecture
+status: draft
+project: landing
+created: 2026-10-09
+---
+
 # Local Development Runbook
 
-<!-- TEMPLATE: replace repo names, commands, and ports for your stack. Delete this comment after setup. -->
+Рабочий код находится в независимом репозитории `landing/`:
+https://github.com/luckyfoxdesign/iberdrola-happy-time.
+Воркспейс хранит инструкции и product docs; он не разворачивается на сервере.
 
-Local development commands for `[project-name]`. The workspace itself is not deployed.
-
-## app
+## Разработка
 
 ```bash
-cd app
-docker compose up
-docker compose run --rm test
-docker compose run --rm lint
-# Add migration/seed commands if needed.
+cd landing
+docker compose --env-file /dev/null up --build astro-dev
 ```
 
-<!-- If compose uses a fixed `name:`, note it here so volumes/networks do not depend on the parent directory name. -->
+Открыть http://localhost:3000. Стек: Astro, TypeScript и обычный CSS.
+Node/npm на хосте не нужны. Изменения в `src/` подхватываются автоматически;
+после изменения lockfile нужно пересобрать образ.
 
-## nginx
+```bash
+cd landing
+bash scripts/verify.sh
+bash scripts/update-project-map.sh
+```
 
-Production nginx lives in the `nginx/` repo. It usually runs only in production, not locally.
+Gate проверяет Compose, тарифные границы, TypeScript и статическую сборку.
+Локальная разработка не требует Traefik, домена или `.env`.
+Карта исходников и Docker-сервисов: `landing/PROJECT_MAP.md`.
 
-Details: `nginx/README.md`.
+## Production-сборка
 
-<!-- Add sections for other repos, such as landing/admin, as they appear. -->
+Из `landing/`:
+
+```bash
+docker compose --env-file /dev/null -f compose.prod.yml config --quiet
+docker compose --env-file /dev/null -f compose.prod.yml build
+```
+
+Production Compose по умолчанию использует `iberdrola.luckyfox.design`,
+без `.env`. `.env.example` документирует placeholder для необязательного
+override `LANDING_DOMAIN`. Live-публикация требует проверки DNS.
+Операционные инструкции: [production runbook](runbook-prod.md).
